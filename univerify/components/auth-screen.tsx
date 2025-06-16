@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FileCheck, User, Building2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IndividualSignup } from "@/components/individual-signup"
 import { OrganizationSignup } from "@/components/organization-signup"
-import { WalletConnect } from "@/components/wallet-connect"
+import { useWeb3AuthConnect, useWeb3AuthDisconnect, useWeb3AuthUser } from "@web3auth/modal/react"
+import { useAccount } from "wagmi"
+import { toast } from "react-toastify"
 
 interface AuthScreenProps {
   onAuthenticate: (
@@ -14,6 +16,70 @@ interface AuthScreenProps {
     type: "individual" | "organization" | null,
     userData: { address: string; name?: string; email?: string } | null,
   ) => void
+}
+
+interface WalletConnectProps {
+  onConnect: (address: string) => void
+}
+
+function WalletConnect({ onConnect }: WalletConnectProps) {
+  const { connect, isConnected, loading: connectLoading, error: connectError } = useWeb3AuthConnect()
+  const { userInfo } = useWeb3AuthUser()
+  const { address } = useAccount()
+
+  useEffect(() => {
+    if (isConnected && address) {
+      console.log("=== WEB3AUTH LOGIN COMPLETE ===")
+      console.log("Web3Auth User Info:", userInfo)
+      console.log("Connected Address:", address)
+      console.log("Is Connected:", isConnected)
+      console.log("=== END WEB3AUTH DATA ===")
+      onConnect(address)
+      toast.success("Connected with Web3Auth")
+    }
+  }, [isConnected, address, onConnect, userInfo])
+
+  const connectWithMetaMask = async () => {
+    try {
+      if (!window.ethereum) {
+        toast.error("MetaMask is not installed. Please install it to continue.")
+        return
+      }
+      // Request account access
+      await window.ethereum.request({ method: 'eth_requestAccounts' })
+      // Get accounts
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' })
+      if (accounts.length > 0) {
+        onConnect(accounts[0])
+        toast.success("Connected with MetaMask")
+      }
+    } catch (error) {
+      toast.error("Failed to connect with MetaMask. Please try again.")
+      console.error("MetaMask connection failed:", error)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <Button
+        onClick={connectWithMetaMask}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+      >
+        Connect with MetaMask
+      </Button>
+      <Button
+        onClick={() => connect()}
+        disabled={connectLoading}
+        variant="outline"
+        className="w-full"
+      >
+        {connectLoading ? "Connecting..." : "Connect with Web3Auth"}
+      </Button>
+      {connectError && (
+        <div className="text-red-500 text-sm">{connectError.message}</div>
+      )}
+    </div>
+  )
 }
 
 export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
@@ -38,7 +104,7 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4">
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
           <FileCheck className="h-16 w-16 text-emerald-600" />
@@ -57,13 +123,16 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
               <CardDescription>For students, professionals, and personal use</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 Upload and verify your personal documents securely. Share them with organizations or other individuals
                 with complete control.
               </p>
             </CardContent>
             <CardFooter>
-              <Button onClick={() => handleTypeSelect("individual")} className="w-full">
+              <Button
+                onClick={() => handleTypeSelect("individual")}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 Continue as Individual <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
@@ -77,13 +146,16 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
               <CardDescription>For businesses, universities, and institutions</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 Manage, verify, and share official documents with enhanced security features and organizational
                 controls.
               </p>
             </CardContent>
             <CardFooter>
-              <Button onClick={() => handleTypeSelect("organization")} className="w-full">
+              <Button
+                onClick={() => handleTypeSelect("organization")}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 Continue as Organization <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
