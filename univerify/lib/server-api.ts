@@ -22,7 +22,7 @@ export class ServerAPIService {
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
-    // Load token from localStorage on initialization
+    // Only access localStorage on the client side
     if (typeof window !== 'undefined') {
       this.authToken = localStorage.getItem('auth_token');
     }
@@ -310,7 +310,11 @@ export class ServerAPIService {
       throw new APIError('Authentication token is required to fetch documents', 401);
     }
 
-    // Get user data from localStorage
+    // Only access localStorage on the client side
+    if (typeof window === 'undefined') {
+      throw new APIError('This method can only be called on the client side', 400);
+    }
+
     const userData = localStorage.getItem('auth_user');
     if (!userData) {
       throw new APIError('User data not found', 401);

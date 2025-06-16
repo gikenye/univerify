@@ -102,29 +102,33 @@ export interface VerificationHistory {
 }
 
 export interface Document {
-  _id: string;
+  id: string;
   txId: string;
   filename: string;
   contentType: string;
   size: number;
-  originalHash: string;
-  currentHash: string;
-  owner: string;
-  ownerAddress: string;
+  uploadedAt: string;
+  hasChanged: boolean;
+  lastVerified: string;
+  owner: {
+    _id: string;
+    walletAddress: string;
+    name: string;
+    email: string;
+  };
   cloudinaryData: CloudinaryData;
   blockchainData: BlockchainData;
-  hasChanged: boolean;
-  uploadedAt: string;
-  verificationHistory: VerificationHistory[];
-  shares: any[];
-  lastVerified: string;
-  createdAt: string;
-  updatedAt: string;
+  arweaveData: Record<string, any>;
+  isOwner: boolean;
 }
 
 export interface DocumentsResponse {
   success: boolean;
-  data: Document[];
+  data: {
+    userAddress: string;
+    documents: Document[];
+    totalDocuments: number;
+  };
   message?: string;
 }
 

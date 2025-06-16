@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DocumentUpload } from "@/components/document-upload"
 import { DocumentList } from "@/components/document-list"
@@ -18,13 +18,43 @@ export function Dashboard({ userType, user }: DashboardProps) {
   const [activeTab, setActiveTab] = useState("my-documents")
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [documents, setDocuments] = useState<Document[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  // Set isClient to true when component mounts
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (activeTab === "my-documents" && isClient) {
+        setIsLoading(true)
+        try {
+          const response = await serverApiService.getUserDocuments()
+          if (response.success && response.data?.documents) {
+            // Access the nested documents array
+            setDocuments(Array.isArray(response.data.documents) ? response.data.documents : [])
+          } else {
+            toast.error("Failed to fetch documents")
+            setDocuments([])
+          }
+        } catch (error) {
+          console.error("Error fetching documents:", error)
+          toast.error("Failed to fetch documents")
+          setDocuments([])
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchDocuments()
+  }, [activeTab, isClient])
 
   const handleDocumentUpload = async (newDocument: Document) => {
     try {
-      // Add the new document to the state
       setDocuments(prevDocuments => [...prevDocuments, newDocument])
-      
-      // Switch to the documents tab to show the uploaded file
       setActiveTab("my-documents")
     } catch (error) {
       console.error("Error handling document upload:", error)
@@ -35,6 +65,11 @@ export function Dashboard({ userType, user }: DashboardProps) {
   const handleDocumentSelect = (document: Document) => {
     setSelectedDocument(document)
     setActiveTab("share")
+  }
+
+  // Don't render anything during SSR
+  if (!isClient) {
+    return null
   }
 
   return (
@@ -62,7 +97,14 @@ export function Dashboard({ userType, user }: DashboardProps) {
         </TabsList>
 
         <TabsContent value="my-documents" className="space-y-4">
-          <DocumentList documents={documents} onDocumentSelect={handleDocumentSelect} />
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading documents...</p>
+            </div>
+          ) : (
+            <DocumentList documents={documents} onDocumentSelect={handleDocumentSelect} />
+          )}
         </TabsContent>
 
         <TabsContent value="upload">

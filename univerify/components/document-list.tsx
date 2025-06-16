@@ -27,8 +27,8 @@ export function DocumentList({ documents, onDocumentSelect }: DocumentListProps)
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch = doc.filename.toLowerCase().includes(searchTerm.toLowerCase())
-    const isVerified = doc.verificationHistory.length > 0
-    const isShared = doc.shares.length > 0
+    const isVerified = doc.lastVerified !== undefined
+    const isShared = doc.arweaveData && Object.keys(doc.arweaveData).length > 0
 
     if (filter === "all") return matchesSearch
     if (filter === "verified") return matchesSearch && isVerified
@@ -141,19 +141,19 @@ export function DocumentList({ documents, onDocumentSelect }: DocumentListProps)
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredDocuments.map((document) => (
-            <Card key={document._id} className="overflow-hidden hover:shadow-md transition-shadow">
+            <Card key={document.id} className="overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="p-0">
                 <div className="flex items-center p-4">
                   <div className="mr-4">{getDocumentIcon(document.contentType)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-medium text-gray-900 truncate">{document.filename}</h3>
-                      {document.verificationHistory.length > 0 && (
+                      {document.lastVerified && (
                         <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
                           <CheckCircle className="h-3 w-3 mr-1" /> Verified
                         </Badge>
                       )}
-                      {document.shares.length > 0 && (
+                      {document.arweaveData && Object.keys(document.arweaveData).length > 0 && (
                         <Badge className="bg-blue-50 text-blue-700 border-blue-200">
                           <Share2 className="h-3 w-3 mr-1" /> Shared
                         </Badge>
@@ -164,7 +164,7 @@ export function DocumentList({ documents, onDocumentSelect }: DocumentListProps)
                       <span className="hidden sm:inline">•</span>
                       <span>{formatFileSize(document.size)}</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 truncate">Hash: {document.currentHash}</p>
+                    <p className="mt-1 text-xs text-gray-500 truncate">Owner: {document.owner.name}</p>
                   </div>
                   <div className="flex gap-2 ml-4">
                     <Button 

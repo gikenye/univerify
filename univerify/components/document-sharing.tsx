@@ -31,7 +31,7 @@ export function DocumentSharing({ document, userType }: DocumentSharingProps) {
 
   // Generate verification link using the service
   const verificationLink = document
-    ? verificationService.generateVerificationLink(document._id, document.currentHash)
+    ? verificationService.generateVerificationLink(document.id, document.txId)
     : ""
 
   const handleCopyLink = () => {
@@ -45,7 +45,7 @@ export function DocumentSharing({ document, userType }: DocumentSharingProps) {
     if (!document || !email) return
 
     try {
-      const response = await serverApiService.shareDocument(document._id, email)
+      const response = await serverApiService.shareDocument(document.id, email)
       if (response.success) {
         setShared(true)
         toast.success("Document shared successfully")
@@ -64,7 +64,7 @@ export function DocumentSharing({ document, userType }: DocumentSharingProps) {
 
     setIsVerifying(true)
     try {
-      const result = await verificationService.verifyDocument(document._id, document.currentHash)
+      const result = await verificationService.verifyDocument(document.id, document.txId)
       if (result.isValid) {
         toast.success("Document verified successfully")
       } else {
@@ -187,7 +187,7 @@ export function DocumentSharing({ document, userType }: DocumentSharingProps) {
                 <span className="font-medium">Verification Status</span>
               </div>
               <UIBadge className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                {document.verificationHistory.length > 0 ? "Verified" : "Not Verified"}
+                {document.lastVerified ? "Verified" : "Not Verified"}
               </UIBadge>
             </div>
 
