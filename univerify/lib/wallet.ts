@@ -12,11 +12,11 @@ export const walletService = {
     return typeof window !== 'undefined' && !!window.ethereum;
   },
 
-  getProvider: (): ethers.providers.Web3Provider | null => {
+  getProvider: (): ethers.BrowserProvider | null => {
     if (!walletService.isMetaMaskInstalled()) {
       return null;
     }
-    return new ethers.providers.Web3Provider(window.ethereum);
+    return new ethers.BrowserProvider(window.ethereum);
   },
 
   connectWallet: async (): Promise<string | null> => {
@@ -51,7 +51,7 @@ export const walletService = {
       const provider = walletService.getProvider();
       if (!provider) return null;
 
-      const accounts = await provider.listAccounts();
+      const accounts = await provider.send('eth_accounts', []);
       
       if (accounts && accounts.length > 0) {
         return accounts[0];
@@ -74,7 +74,7 @@ export const walletService = {
       const provider = walletService.getProvider();
       if (!provider) return null;
 
-      const signer = provider.getSigner();
+      const signer = await provider.getSigner();
       const signature = await signer.signMessage(message);
       
       return signature;
