@@ -1,14 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { FileCheck, User, Building2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IndividualSignup } from "@/components/individual-signup"
 import { OrganizationSignup } from "@/components/organization-signup"
-import { useWeb3AuthConnect, useWeb3AuthDisconnect, useWeb3AuthUser } from "@web3auth/modal/react"
-import { useAccount } from "wagmi"
 import { toast } from "react-toastify"
+import { serverApiService } from "@/lib/server-api"
+
+// Extend Window interface to include ethereum
+interface Window {
+  ethereum?: {
+    request: (args: { method: string; params?: any[] }) => Promise<any>
+    on?: (event: string, callback: (...args: any[]) => void) => void
+    removeListener?: (event: string, callback: (...args: any[]) => void) => void
+  }
+}
 
 interface AuthScreenProps {
   onAuthenticate: (
@@ -23,35 +31,22 @@ interface WalletConnectProps {
 }
 
 function WalletConnect({ onConnect }: WalletConnectProps) {
-  const { connect, isConnected, loading: connectLoading, error: connectError } = useWeb3AuthConnect()
-  const { userInfo } = useWeb3AuthUser()
-  const { address } = useAccount()
-
-  useEffect(() => {
-    if (isConnected && address) {
-      console.log("=== WEB3AUTH LOGIN COMPLETE ===")
-      console.log("Web3Auth User Info:", userInfo)
-      console.log("Connected Address:", address)
-      console.log("Is Connected:", isConnected)
-      console.log("=== END WEB3AUTH DATA ===")
-      onConnect(address)
-      toast.success("Connected with Web3Auth")
-    }
-  }, [isConnected, address, onConnect, userInfo])
-
   const connectWithMetaMask = async () => {
     try {
-      if (!window.ethereum) {
+      // Check if window.ethereum is available
+      if (typeof window !== "undefined" && window.ethereum) {
+        // Request account access
+        await window.ethereum.request({ method: "eth_requestAccounts" })
+        // Get accounts
+        const accounts = await window.ethereum.request({ method: "eth_accounts" })
+        if (accounts.length > 0) {
+          onConnect(accounts[0])
+          toast.success("Connected with MetaMask")
+        } else {
+          toast.error("No accounts found. Please unlock MetaMask.")
+        }
+      } else {
         toast.error("MetaMask is not installed. Please install it to continue.")
-        return
-      }
-      // Request account access
-      await window.ethereum.request({ method: 'eth_requestAccounts' })
-      // Get accounts
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' })
-      if (accounts.length > 0) {
-        onConnect(accounts[0])
-        toast.success("Connected with MetaMask")
       }
     } catch (error) {
       toast.error("Failed to connect with MetaMask. Please try again.")
@@ -67,23 +62,13 @@ function WalletConnect({ onConnect }: WalletConnectProps) {
       >
         Connect with MetaMask
       </Button>
-      <Button
-        onClick={() => connect()}
-        disabled={connectLoading}
-        variant="outline"
-        className="w-full"
-      >
-        {connectLoading ? "Connecting..." : "Connect with Web3Auth"}
-      </Button>
-      {connectError && (
-        <div className="text-red-500 text-sm">{connectError.message}</div>
-      )}
     </div>
   )
 }
 
+// Rest of the AuthScreen component remains unchanged
 export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
-  const [step, setStep] = useState<"select" | "connect" | "signup">("select")
+  const [step, setStep] = useState<"select" | "connect" | "signup" | "login">("select")
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
 
@@ -92,14 +77,92 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
     setStep("connect")
   }
 
-  const handleWalletConnect = (address: string) => {
+  const handleWalletConnect = async (address: string) => {
     setWalletAddress(address)
+    
+    try {
+      // Try to login first
+      if (typeof window !== "undefined" && window.ethereum) {
+        const message = `Sign this message to login to UniVerify with address ${address}`
+        const signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [message, address],
+        })
+
+        const loginResponse = await serverApiService.login({
+          walletAddress: address,
+          signature,
+          message,
+        })
+
+        if (loginResponse.success) {
+          serverApiService.setAuthToken(loginResponse.data.token)
+          // Store token and user data in localStorage
+          localStorage.setItem('auth_token', loginResponse.data.token)
+          localStorage.setItem('auth_user', JSON.stringify({
+            ...loginResponse.data.user,
+            userType: userType
+          }))
+          onAuthenticate(true, userType, {
+            address: address,
+            name: loginResponse.data.user.name,
+            email: loginResponse.data.user.email,
+          })
+          toast.success("Successfully logged in!")
+          return
+        }
+      } else {
+        toast.error("MetaMask is not available.")
+      }
+    } catch (error) {
+      console.log("Login failed:", error)
+      toast.error("Login failed. Please try again.")
+    }
+
+    // If login fails, proceed to signup
     setStep("signup")
   }
 
-  const handleSignupComplete = (userData: { name?: string; email?: string }) => {
-    if (walletAddress) {
-      onAuthenticate(true, userType, { address: walletAddress, ...userData })
+  const handleSignupComplete = async (userData: { name: string; email: string }) => {
+    if (!walletAddress) return
+
+    try {
+      if (typeof window !== "undefined" && window.ethereum) {
+        const message = `Sign this message to signup to UniVerify with address ${walletAddress}`
+        const signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [message, walletAddress],
+        })
+
+        const signupResponse = await serverApiService.signup({
+          walletAddress,
+          signature,
+          message,
+          name: userData.name,
+          email: userData.email,
+        })
+
+        if (signupResponse.success) {
+          serverApiService.setAuthToken(signupResponse.data.token)
+          // Store token and user data in localStorage
+          localStorage.setItem('auth_token', signupResponse.data.token)
+          localStorage.setItem('auth_user', JSON.stringify({
+            ...signupResponse.data.user,
+            userType: userType
+          }))
+          onAuthenticate(true, userType, {
+            address: walletAddress,
+            name: signupResponse.data.user.name,
+            email: signupResponse.data.user.email,
+          })
+          toast.success("Successfully signed up!")
+        }
+      } else {
+        toast.error("MetaMask is not available.")
+      }
+    } catch (error) {
+      toast.error("Failed to complete signup. Please try again.")
+      console.error("Signup failed:", error)
     }
   }
 

@@ -9,17 +9,54 @@ export interface User {
   createdAt: string;
 }
 
-export interface Document {
-  id: string;
-  name: string;
-  description?: string;
-  ipfsHash: string;
-  uploadedBy: string;
+export interface CloudinaryData {
+  publicId: string;
+  url: string;
+  resourceType: string;
+  folder: string;
+  tags: string[];
+  etag: string;
   uploadedAt: string;
+}
+
+export interface BlockchainData {
+  transactionHash: string;
+  blockNumber: number;
+  blockHash: string;
+  contractAddress: string;
+  gasUsed: number;
+  status: string;
+  confirmations: number;
+  timestamp: number;
+}
+
+export interface VerificationHistory {
+  verifiedAt: string;
+  hash: string;
+  hasChanged: boolean;
+  verifiedBy: string;
+  _id: string;
+}
+
+export interface Document {
+  _id: string;
+  txId: string;
+  filename: string;
+  contentType: string;
   size: number;
-  mimeType: string;
-  isVerified: boolean;
-  verificationStatus: 'verified' | 'pending' | 'failed';
+  originalHash: string;
+  currentHash: string;
+  owner: string;
+  ownerAddress: string;
+  cloudinaryData: CloudinaryData;
+  blockchainData: BlockchainData;
+  hasChanged: boolean;
+  uploadedAt: string;
+  verificationHistory: VerificationHistory[];
+  shares: any[];
+  lastVerified: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DocumentChange {

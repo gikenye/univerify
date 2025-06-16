@@ -2,8 +2,11 @@
 
 import { User, UserType } from '@/types';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { authAPI } from './api';
+import { ServerAPIService } from './server-api';
 import { walletService } from './wallet';
+
+// Create a single instance of ServerAPIService
+const serverApiService = new ServerAPIService();
 
 interface AuthContextType {
   user: User | null;
@@ -25,8 +28,18 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+// Token storage keys
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem(USER_KEY);
+      return savedUser ? JSON.parse(savedUser) : null;
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,13 +48,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkExistingSession = async () => {
       try {
         setIsLoading(true);
+        
+        // Check for stored token
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+        const storedUser = localStorage.getItem(USER_KEY);
+        
+        if (storedToken && storedUser) {
+          // Restore token to API service
+          serverApiService.setAuthToken(storedToken);
+          setUser(JSON.parse(storedUser));
+          setIsLoading(false);
+          return;
+        }
+
+        // If no stored token, try wallet connection
         const walletAddress = await walletService.getConnectedAccount();
         
         if (walletAddress) {
           // Attempt to login with the connected wallet
-          const user = await authAPI.loginUser(walletAddress);
-          if (user) {
-            setUser(user);
+          const response = await serverApiService.login({ 
+            walletAddress, 
+            signature: '', 
+            message: '' 
+          });
+          if (response.success && response.data.user) {
+            // Transform API response to match User type
+            const transformedUser: User = {
+              id: response.data.user.id || '', // Generate a unique ID if not provided
+              type: 'individual', // Default to individual since API doesn't provide type
+              name: response.data.user.name || '',
+              email: response.data.user.email || '',
+              walletAddress: response.data.user.wallet_address,
+              createdAt: new Date().toISOString() // Use current timestamp since API doesn't provide it
+            };
+            setUser(transformedUser);
+            // Store user data
+            localStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+            // Store token
+            if (response.data.token) {
+              localStorage.setItem(TOKEN_KEY, response.data.token);
+              serverApiService.setAuthToken(response.data.token);
+            }
           }
         }
         
@@ -71,10 +118,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Check if user exists
-      const existingUser = await authAPI.loginUser(walletAddress);
+      const response = await serverApiService.login({ 
+        walletAddress, 
+        signature: '', 
+        message: '' 
+      });
       
-      if (existingUser) {
-        setUser(existingUser);
+      if (response.success && response.data.user) {
+        // Transform API response to match User type
+        const transformedUser: User = {
+          id: response.data.user.id || '', // Generate a unique ID if not provided
+          type: 'individual', // Default to individual since API doesn't provide type
+          name: response.data.user.name || '',
+          email: response.data.user.email || '',
+          walletAddress: response.data.user.wallet_address,
+          createdAt: new Date().toISOString() // Use current timestamp since API doesn't provide it
+        };
+        setUser(transformedUser);
+        // Store user data
+        localStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+        // Store token
+        if (response.data.token) {
+          localStorage.setItem(TOKEN_KEY, response.data.token);
+          serverApiService.setAuthToken(response.data.token);
+        }
       }
       
       setIsLoading(false);
@@ -107,12 +174,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Register the user
-      const newUser = await authAPI.registerUser(userType, {
-        ...userData,
+      const response = await serverApiService.signup({
         walletAddress,
+        signature: '',
+        message: '',
+        name: userData.name || '',
+        email: userData.email || ''
       });
       
-      setUser(newUser);
+      if (response.success && response.data.user) {
+        // Transform API response to match User type
+        const transformedUser: User = {
+          id: response.data.user.id || '', // Generate a unique ID if not provided
+          type: 'individual', // Default to individual since API doesn't provide type
+          name: response.data.user.name || '',
+          email: response.data.user.email || '',
+          walletAddress: response.data.user.wallet_address,
+          createdAt: new Date().toISOString() // Use current timestamp since API doesn't provide it
+        };
+        setUser(transformedUser);
+        // Store user data
+        localStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+        // Store token
+        if (response.data.token) {
+          localStorage.setItem(TOKEN_KEY, response.data.token);
+          serverApiService.setAuthToken(response.data.token);
+        }
+      }
+      
       setIsLoading(false);
     } catch (err) {
       console.error('Error registering user:', err);
@@ -124,6 +213,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout
   const logout = () => {
     setUser(null);
+    // Clear stored data
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    serverApiService.clearAuthToken();
   };
 
   return (

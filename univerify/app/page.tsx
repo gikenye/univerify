@@ -1,14 +1,42 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Layout } from "@/components/layout"
 import { AuthScreen } from "@/components/auth-screen"
 import { Dashboard } from "@/components/dashboard"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
   const [user, setUser] = useState<{ address: string; name?: string; email?: string } | null>(null)
+  const { user: authUser } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Check for token in localStorage
+    const token = localStorage.getItem('auth_token')
+    const storedUser = localStorage.getItem('auth_user')
+    
+    if (token && storedUser) {
+      try {
+        const userData = JSON.parse(storedUser)
+        setIsAuthenticated(true)
+        setUserType(userData.userType || 'individual') // Default to individual if not specified
+        setUser({
+          address: userData.walletAddress,
+          name: userData.name,
+          email: userData.email
+        })
+      } catch (error) {
+        console.error('Error parsing stored user data:', error)
+        // Clear invalid data
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_user')
+      }
+    }
+  }, [])
 
   const handleAuthentication = (
     authenticated: boolean,

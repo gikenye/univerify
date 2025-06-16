@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { Document } from "@/components/dashboard"
+import type { Document } from "@/types"
+import { serverApiService, uploadUtils } from "@/lib/server-api"
+import { toast } from "sonner"
 
 interface DocumentUploadProps {
   onDocumentUpload: (document: Document) => void
@@ -54,60 +56,98 @@ export function DocumentUpload({ onDocumentUpload, userType }: DocumentUploadPro
     setError(null)
     setUploadComplete(false)
 
-    // Check file size (10MB limit for example)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File size exceeds 10MB limit")
+    // Validate file
+    const validation = uploadUtils.validateFile(file, {
+      maxSize: 10 * 1024 * 1024, // 10MB
+      allowedTypes: [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png'
+      ]
+    })
+
+    if (!validation.valid) {
+      setError(validation.error || "Invalid file")
       return
     }
 
     setFile(file)
   }
 
-  const uploadFile = () => {
+  const uploadFile = async () => {
     if (!file) return
 
     setUploading(true)
     setUploadProgress(0)
+    setError(null)
 
-    // Simulate file upload with progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          return 100
-        }
-        return prev + 5
-      })
-    }, 200)
-
-    // Simulate API call to upload file
-    setTimeout(() => {
-      clearInterval(interval)
-      setUploadProgress(100)
-      setUploading(false)
-      setUploadComplete(true)
-
-      // Create a new document object
-      const newDocument: Document = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: file.name,
-        uploadDate: new Date(),
-        size: file.size,
-        hash: `QmX${Math.random().toString(36).substring(2, 40)}`,
-        verified: true,
-        shared: false,
-        type: file.name.split(".").pop() || "",
-        changelog: [
-          {
-            action: "Upload",
-            timestamp: new Date(),
-            user: userType === "individual" ? "You" : "Your Organization",
-          },
-        ],
+    try {
+      // Check if we have a valid token
+      const token = serverApiService.getAuthToken()
+      if (!token) {
+        throw new Error('Authentication token is required for file upload')
       }
 
+      const result = await uploadUtils.uploadWithProgress(file, {
+        onProgress: (progress) => {
+          setUploadProgress(progress)
+        },
+        onTransactionHash: (hash) => {
+          console.log('Transaction hash:', hash)
+        }
+      })
+
+      // Create a new document object from the API response
+      const newDocument: Document = {
+        _id: result.data.file.id,
+        txId: result.data.blockchain.transaction_hash,
+        filename: result.data.file.original_name,
+        contentType: file.type,
+        size: result.data.file.size,
+        originalHash: result.data.blockchain.transaction_hash,
+        currentHash: result.data.blockchain.transaction_hash,
+        owner: result.data.file.user_info.name,
+        ownerAddress: result.data.file.uploaded_by,
+        cloudinaryData: {
+          publicId: result.data.file.id,
+          url: result.data.file.url,
+          resourceType: file.type.split('/')[0],
+          folder: 'documents',
+          tags: [],
+          etag: '',
+          uploadedAt: new Date().toISOString()
+        },
+        blockchainData: {
+          transactionHash: result.data.blockchain.transaction_hash,
+          blockNumber: result.data.blockchain.block_number,
+          blockHash: '',
+          contractAddress: '',
+          gasUsed: 0,
+          status: result.data.blockchain.status,
+          confirmations: 0,
+          timestamp: result.data.blockchain.timestamp
+        },
+        hasChanged: false,
+        uploadedAt: new Date().toISOString(),
+        verificationHistory: [],
+        shares: [],
+        lastVerified: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      setUploadComplete(true)
       onDocumentUpload(newDocument)
-    }, 4000)
+      toast.success("Document uploaded successfully!")
+    } catch (error) {
+      console.error("Upload error:", error)
+      setError(error instanceof Error ? error.message : "Failed to upload document")
+      toast.error("Failed to upload document. Please try again.")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const triggerFileInput = () => {
@@ -173,16 +213,15 @@ export function DocumentUpload({ onDocumentUpload, userType }: DocumentUploadPro
                     <p className="font-medium truncate">{file.name}</p>
                     <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
-                  {!uploading && !uploadComplete && <Button onClick={uploadFile}>Upload</Button>}
+                  {!uploading && !uploadComplete && <Button onClick={uploadFile} variant="default">Upload</Button>}
                 </div>
 
                 {uploading && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Uploading...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
                     <Progress value={uploadProgress} />
+                    <p className="text-sm text-gray-500 text-center">
+                      {uploadProgress === 100 ? "Finalizing..." : `Uploading... ${uploadProgress}%`}
+                    </p>
                   </div>
                 )}
               </div>

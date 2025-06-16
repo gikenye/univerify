@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { walletService } from "@/lib/wallet"
+import { toast } from "react-toastify"
 
 interface IndividualSignupProps {
   onComplete: (userData: { name: string; email: string }) => void
@@ -32,15 +34,25 @@ export function IndividualSignup({ onComplete }: IndividualSignupProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validate()) {
       setIsSubmitting(true)
 
-      // Simulate API call
-      setTimeout(() => {
-        onComplete({ name, email })
+      try {
+        const response = await walletService.signupUser({ name, email })
+        
+        if (response.success) {
+          toast.success("Account created successfully!")
+          onComplete({ name, email })
+        } else {
+          toast.error("Failed to create account. Please try again.")
+        }
+      } catch (error) {
+        console.error("Signup error:", error)
+        toast.error("An error occurred during signup. Please try again.")
+      } finally {
         setIsSubmitting(false)
-      }, 1000)
+      }
     }
   }
 

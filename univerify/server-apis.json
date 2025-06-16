@@ -1,0 +1,147 @@
+{
+    "api_info": {
+      "name": "Uniserver MVP - File Upload & Blockchain API",
+      "version": "1.0.0",
+      "description": "Essential APIs for Web3Auth authenticated file uploads with blockchain simulation",
+      "base_url": "http://localhost:5000",
+      "authentication": {
+        "type": "Bearer Token",
+        "description": "Web3Auth JWT token required for protected endpoints",
+        "header": "Authorization: Bearer <web3auth_jwt_token>"
+      }
+    },
+    "endpoints": {
+      "health_check": {
+        "method": "GET",
+        "path": "/health",
+        "authentication": "none",
+        "description": "Check if server is running",
+        "response": {
+          "status": 200,
+          "body": {
+            "status": "ok",
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          }
+        },
+        "example": "fetch('http://localhost:5000/health')"
+      },
+      "upload_file": {
+        "method": "POST",
+        "path": "/api/upload/single",
+        "authentication": "required",
+        "description": "Upload file with blockchain transaction simulation",
+        "request": {
+          "headers": {
+            "Authorization": "Bearer <web3auth_jwt_token>"
+          },
+          "body": {
+            "type": "form-data",
+            "fields": {
+              "file": "File to upload (required)",
+              "folder": "Cloudinary folder (optional, default: 'documents')",
+              "description": "File description (optional)"
+            }
+          }
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "success": true,
+            "data": {
+              "file": {
+                "id": "documents/file_id",
+                "original_name": "document.pdf",
+                "size": 1024567,
+                "url": "https://res.cloudinary.com/your-cloud/...",
+                "uploaded_by": "0x742d35Cc7E4C0532d3fC8d8F0d4d3d3f6C8A8D9F",
+                "user_info": {
+                  "email": "user@example.com",
+                  "name": "John Doe",
+                  "provider": "google"
+                }
+              },
+              "blockchain": {
+                "transaction_hash": "0x1234567890abcdef...",
+                "block_number": 18123456,
+                "status": "0x1",
+                "timestamp": 1705312200000
+              }
+            }
+          }
+        },
+        "example": "const formData = new FormData();\nformData.append('file', fileInput.files[0]);\n\nfetch('http://localhost:5000/api/upload/single', {\n  method: 'POST',\n  headers: { 'Authorization': `Bearer ${token}` },\n  body: formData\n})"
+      },
+      "get_transaction": {
+        "method": "GET",
+        "path": "/api/upload/transaction/{hash}",
+        "authentication": "none",
+        "description": "Get blockchain transaction details",
+        "parameters": {
+          "hash": "Transaction hash from upload response"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "transaction": {
+                "hash": "0x1234567890abcdef...",
+                "blockNumber": 18123456,
+                "status": "0x1",
+                "timestamp": 1705312200000
+              }
+            }
+          }
+        },
+        "example": "fetch(`http://localhost:5000/api/upload/transaction/${txHash}`)"
+      },
+      "delete_file": {
+        "method": "DELETE",
+        "path": "/api/upload/file/{publicId}",
+        "authentication": "required",
+        "description": "Delete uploaded file",
+        "parameters": {
+          "publicId": "File ID from upload response"
+        },
+        "headers": {
+          "Authorization": "Bearer <web3auth_jwt_token>"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "deleted": true,
+              "public_id": "documents/file_id"
+            }
+          }
+        },
+        "example": "fetch(`http://localhost:5000/api/upload/file/${fileId}`, {\n  method: 'DELETE',\n  headers: { 'Authorization': `Bearer ${token}` }\n})"
+      }
+    },
+    "authentication": {
+      "web3auth_setup": {
+        "description": "Get JWT token from Web3Auth for API calls",
+        "code": "import { Web3Auth } from '@web3auth/modal';\n\nconst web3auth = new Web3Auth({\n  clientId: 'YOUR_CLIENT_ID',\n  web3AuthNetwork: 'sapphire_mainnet'\n});\n\nawait web3auth.initModal();\nawait web3auth.connect();\nconst authResult = await web3auth.authenticateUser();\nconst token = authResult.idToken;"
+      }
+    },
+    "error_codes": {
+      "401": "Missing or invalid Web3Auth token",
+      "404": "File or transaction not found",
+      "500": "Server error or Cloudinary not configured"
+    },
+    "mvp_workflow": {
+      "steps": [
+        "1. User logs in with Web3Auth to get JWT token",
+        "2. User selects file to upload",
+        "3. Call /api/upload/single with file and token",
+        "4. Get file URL and blockchain transaction hash",
+        "5. Optionally verify transaction with /api/upload/transaction/{hash}",
+        "6. User can delete file with /api/upload/file/{id} if needed"
+      ]
+    },
+    "complete_example": {
+      "description": "Full MVP implementation example",
+      "code": "// 1. Initialize Web3Auth\nconst web3auth = new Web3Auth({\n  clientId: 'YOUR_WEB3AUTH_CLIENT_ID',\n  web3AuthNetwork: 'sapphire_mainnet'\n});\n\n// 2. Login user\nawait web3auth.initModal();\nawait web3auth.connect();\nconst user = await web3auth.getUserInfo();\nconst authResult = await web3auth.authenticateUser();\nconst token = authResult.idToken;\n\n// 3. Upload file\nconst uploadFile = async (file) => {\n  const formData = new FormData();\n  formData.append('file', file);\n  formData.append('folder', 'user-documents');\n  \n  const response = await fetch('http://localhost:5000/api/upload/single', {\n    method: 'POST',\n    headers: { 'Authorization': `Bearer ${token}` },\n    body: formData\n  });\n  \n  const result = await response.json();\n  \n  if (result.success) {\n    console.log('File uploaded:', result.data.file.url);\n    console.log('Blockchain TX:', result.data.blockchain.transaction_hash);\n    return result.data;\n  }\n};\n\n// 4. Verify transaction (optional)\nconst verifyTransaction = async (txHash) => {\n  const response = await fetch(`http://localhost:5000/api/upload/transaction/${txHash}`);\n  const result = await response.json();\n  return result.data.transaction;\n};\n\n// 5. Delete file (optional)\nconst deleteFile = async (fileId) => {\n  const response = await fetch(`http://localhost:5000/api/upload/file/${fileId}`, {\n    method: 'DELETE',\n    headers: { 'Authorization': `Bearer ${token}` }\n  });\n  return await response.json();\n};"
+    }
+  } 

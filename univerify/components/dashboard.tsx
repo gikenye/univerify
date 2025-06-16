@@ -5,6 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DocumentUpload } from "@/components/document-upload"
 import { DocumentList } from "@/components/document-list"
 import { DocumentSharing } from "@/components/document-sharing"
+import { serverApiService, uploadUtils } from "@/lib/server-api"
+import { Document } from "@/types"
+import { toast } from "sonner"
 
 interface DashboardProps {
   userType: "individual" | "organization" | null
@@ -14,32 +17,19 @@ interface DashboardProps {
 export function Dashboard({ userType, user }: DashboardProps) {
   const [activeTab, setActiveTab] = useState("my-documents")
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
-  const [documents, setDocuments] = useState<Document[]>([
-    // Sample documents for demonstration
-    {
-      id: "1",
-      name: "Sample Certificate.pdf",
-      uploadDate: new Date("2025-04-15"),
-      size: 1240000,
-      hash: "QmX7b5jxn6Sj7mzMrW6EYEhqaE1BYxBUzxTgQE6RuFPPQP",
-      verified: true,
-      shared: false,
-      type: "pdf",
-    },
-    {
-      id: "2",
-      name: "Project Proposal.docx",
-      uploadDate: new Date("2025-05-01"),
-      size: 568000,
-      hash: "QmYbvZg7orJKrw3qGNrYBMJEExKzXZUZ6PvQBHPdpXqQjL",
-      verified: true,
-      shared: true,
-      type: "docx",
-    },
-  ])
+  const [documents, setDocuments] = useState<Document[]>([])
 
-  const handleDocumentUpload = (newDocument: Document) => {
-    setDocuments([...documents, newDocument])
+  const handleDocumentUpload = async (newDocument: Document) => {
+    try {
+      // Add the new document to the state
+      setDocuments(prevDocuments => [...prevDocuments, newDocument])
+      
+      // Switch to the documents tab to show the uploaded file
+      setActiveTab("my-documents")
+    } catch (error) {
+      console.error("Error handling document upload:", error)
+      toast.error("Failed to process uploaded document")
+    }
   }
 
   const handleDocumentSelect = (document: Document) => {
@@ -85,21 +75,4 @@ export function Dashboard({ userType, user }: DashboardProps) {
       </Tabs>
     </div>
   )
-}
-
-// Document type definition
-export interface Document {
-  id: string
-  name: string
-  uploadDate: Date
-  size: number
-  hash: string
-  verified: boolean
-  shared: boolean
-  type: string
-  changelog?: {
-    action: string
-    timestamp: Date
-    user: string
-  }[]
 }
