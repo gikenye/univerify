@@ -123,10 +123,6 @@ export const FileUploadWithWallet: React.FC = () => {
         maxSize: 10 * 1024 * 1024, // 10MB
         allowedTypes: [
           'application/pdf',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'text/plain',
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ],

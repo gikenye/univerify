@@ -209,6 +209,17 @@ export const FileUpload: React.FC = () => {
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+
+      if (!allowedMimeTypes.includes(file.type)) {
+        alert('Invalid file type. Only PDF and Word documents are allowed.');
+        return;
+      }
+
       // Validate file
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
