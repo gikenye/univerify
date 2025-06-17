@@ -125,7 +125,31 @@ export class ServerAPIService {
 
   // Verify document by transaction ID
   async verifyDocument(txId: string): Promise<VerificationResponse> {
-    return this.makeRequest<VerificationResponse>(`/api/arweave/verify/${txId}`);
+    if (!txId) {
+      throw new APIError('Transaction ID is required for document verification', 400);
+    }
+
+    try {
+      const response = await this.makeRequest<VerificationResponse>(`/api/arweave/verify/${txId}`);
+      
+      if (!response.success) {
+        throw new APIError(
+          response.data?.message || 'Document verification failed',
+          400,
+          response
+        );
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError(
+        `Failed to verify document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        500
+      );
+    }
   }
 
   // Upload single file
@@ -331,12 +355,33 @@ export class ServerAPIService {
   }
 
   async shareDocument(documentId: string, email: string): Promise<{ success: boolean; message?: string }> {
-    return this.makeRequest<{ success: boolean; message?: string }>('/documents/share', {
+    if (!this.authToken) {
+      throw new APIError('Authentication token is required for document sharing', 401);
+    }
+
+    // First verify the document
+    const verificationResponse = await this.verifyDocument(documentId);
+    
+    if (!verificationResponse.success) {
+      throw new APIError(
+        verificationResponse.data?.message || 'Document verification failed',
+        400,
+        verificationResponse
+      );
+    }
+
+    // Then share the document
+    return this.makeRequest<{ success: boolean; message?: string }>('/api/arweave/share', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ documentId, email }),
+      body: JSON.stringify({ 
+        documentId, 
+        email,
+        txId: verificationResponse.data.txId,
+        verificationHash: verificationResponse.data.verification.hash
+      }),
     });
   }
 }
