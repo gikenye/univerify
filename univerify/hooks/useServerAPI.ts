@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { UploadResponse, TransactionResponse, DeleteResponse, UploadProgress } from '../lib/types';
 
 // API configuration
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = ;
 
 // Custom hook for server API integration
 export const useServerAPI = (authToken?: string) => {
