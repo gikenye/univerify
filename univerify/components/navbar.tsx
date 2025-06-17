@@ -5,7 +5,6 @@ import { FileCheck, LogOut } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { serverApiService } from "@/lib/server-api"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -18,10 +17,13 @@ export function Navbar() {
     setMounted(true)
   }, [])
 
-  const handleLogout = () => {
-    serverApiService.logout()
-    localStorage.removeItem("auth_user")
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      logout() // Use the logout function from auth context
+      router.push("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
   // Don't render anything until mounted to prevent hydration mismatch

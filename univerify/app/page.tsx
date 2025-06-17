@@ -11,7 +11,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
   const [user, setUser] = useState<{ address: string; name?: string; email?: string } | null>(null)
-  const { user: authUser } = useAuth()
+  const { user: authUser, logout } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function Home() {
       try {
         const userData = JSON.parse(storedUser)
         setIsAuthenticated(true)
-        setUserType(userData.userType || 'individual') // Default to individual if not specified
+        setUserType(userData.userType || 'individual')
         setUser({
           address: userData.walletAddress,
           name: userData.name,
@@ -31,12 +31,19 @@ export default function Home() {
         })
       } catch (error) {
         console.error('Error parsing stored user data:', error)
-        // Clear invalid data
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('auth_user')
+        // Clear invalid data and logout
+        logout()
+        setIsAuthenticated(false)
+        setUserType(null)
+        setUser(null)
       }
+    } else {
+      // If no token or user data, ensure we're logged out
+      setIsAuthenticated(false)
+      setUserType(null)
+      setUser(null)
     }
-  }, [])
+  }, [logout])
 
   const handleAuthentication = (
     authenticated: boolean,

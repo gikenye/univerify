@@ -213,9 +213,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout
   const logout = () => {
     setUser(null);
-    // Clear stored data
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    setError(null);
+    // Clear all stored data
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('user_type');
+    // Clear server API token
     serverApiService.clearAuthToken();
   };
 
