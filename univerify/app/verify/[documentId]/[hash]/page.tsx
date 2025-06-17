@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, FileText, Clock } from "lucide-react"
 import { verificationService, type VerificationResult } from "@/lib/verification"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { serverApiService } from "@/lib/server-api"
 
 export default function VerifyPage() {
   const params = useParams()
@@ -19,13 +20,55 @@ export default function VerifyPage() {
       if (!params.documentId || !params.hash) return
 
       try {
-        const verificationResult = await verificationService.verifyDocument(
-          params.documentId as string,
-          params.hash as string
-        )
-        setResult(verificationResult)
+        // Use the txId (hash parameter) directly with the server API
+        const response = await serverApiService.verifyDocument(params.hash as string)
+        
+        if (response.success) {
+          setResult({
+            isValid: true,
+            document: {
+              id: response.data.txId,
+              txId: response.data.txId,
+              filename: response.data.document.filename,
+              contentType: response.data.document.contentType,
+              size: response.data.document.size,
+              owner: {
+                _id: response.data.txId,
+                walletAddress: response.data.document.owner.address,
+                name: response.data.document.owner.name,
+                email: response.data.document.owner.email
+              },
+              cloudinaryData: {
+                publicId: response.data.txId,
+                url: response.data.arweave.url,
+                resourceType: response.data.document.contentType.split('/')[0],
+                folder: 'documents',
+                tags: [],
+                etag: '',
+                uploadedAt: response.data.document.uploadedAt
+              },
+              blockchainData: response.data.blockchain,
+              hasChanged: response.data.verification.hasChanged,
+              uploadedAt: response.data.document.uploadedAt,
+              lastVerified: response.data.verification.verifiedAt,
+              arweaveData: response.data.arweave,
+              isOwner: true
+            }
+          })
+        } else {
+          setResult({
+            isValid: false,
+            document: null,
+            error: response.data?.message || 'Verification failed'
+          })
+        }
       } catch (error) {
         console.error("Verification error:", error)
+        setResult({
+          isValid: false,
+          document: null,
+          error: error instanceof Error ? error.message : 'Failed to verify document'
+        })
         toast.error("Failed to verify document")
       } finally {
         setLoading(false)

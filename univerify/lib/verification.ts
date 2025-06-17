@@ -8,14 +8,14 @@ export interface VerificationResult {
 }
 
 export const verificationService = {
-  generateVerificationLink: (documentId: string, hash: string): string => {
+  generateVerificationLink: (documentId: string, txId: string): string => {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://univerify.vercel.app'
-    return `${baseUrl}/verify/${documentId}/${hash}`
+    return `${baseUrl}/verify/${documentId}/${txId}`
   },
 
-  verifyDocument: async (documentId: string, hash: string): Promise<VerificationResult> => {
+  verifyDocument: async (documentId: string, txId: string): Promise<VerificationResult> => {
     try {
-      const response = await serverApiService.verifyDocument(documentId)
+      const response = await serverApiService.verifyDocument(txId)
       
       if (response.success) {
         return {
