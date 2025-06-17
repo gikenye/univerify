@@ -21,15 +21,17 @@ export const verificationService = {
         return {
           isValid: true,
           document: {
-            _id: response.data.txId,
+            id: response.data.txId,
             txId: response.data.txId,
             filename: response.data.document.filename,
             contentType: response.data.document.contentType,
             size: response.data.document.size,
-            originalHash: hash,
-            currentHash: response.data.verification.hash,
-            owner: response.data.document.owner.name,
-            ownerAddress: response.data.document.owner.address,
+            owner: {
+              _id: response.data.txId,
+              walletAddress: response.data.document.owner.address,
+              name: response.data.document.owner.name,
+              email: response.data.document.owner.email
+            },
             cloudinaryData: {
               publicId: response.data.txId,
               url: response.data.arweave.url,
@@ -42,11 +44,9 @@ export const verificationService = {
             blockchainData: response.data.blockchain,
             hasChanged: response.data.verification.hasChanged,
             uploadedAt: response.data.document.uploadedAt,
-            verificationHistory: [],
-            shares: [],
             lastVerified: response.data.verification.verifiedAt,
-            createdAt: response.data.document.uploadedAt,
-            updatedAt: response.data.verification.verifiedAt
+            arweaveData: response.data.arweave,
+            isOwner: true
           }
         }
       }

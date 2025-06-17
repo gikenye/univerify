@@ -6,7 +6,7 @@ import { DocumentUpload } from "@/components/document-upload"
 import { DocumentList } from "@/components/document-list"
 import { DocumentSharing } from "@/components/document-sharing"
 import { serverApiService, uploadUtils } from "@/lib/server-api"
-import { Document } from "@/types"
+import { Document } from "@/lib/types"
 import { toast } from "sonner"
 
 interface DashboardProps {

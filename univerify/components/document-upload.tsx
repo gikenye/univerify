@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { Document } from "@/types"
+import type { Document } from "@/lib/types"
 import { serverApiService, uploadUtils } from "@/lib/server-api"
 import { toast } from "sonner"
 
@@ -101,15 +101,20 @@ export function DocumentUpload({ onDocumentUpload, userType }: DocumentUploadPro
 
       // Create a new document object from the API response
       const newDocument: Document = {
-        _id: result.data.file.id,
+        id: result.data.file.id,
         txId: result.data.blockchain.transaction_hash,
         filename: result.data.file.original_name,
         contentType: file.type,
         size: result.data.file.size,
-        originalHash: result.data.blockchain.transaction_hash,
-        currentHash: result.data.blockchain.transaction_hash,
-        owner: result.data.file.user_info.name,
-        ownerAddress: result.data.file.uploaded_by,
+        uploadedAt: new Date().toISOString(),
+        hasChanged: false,
+        lastVerified: new Date().toISOString(),
+        owner: {
+          _id: result.data.file.id,
+          walletAddress: result.data.file.uploaded_by,
+          name: result.data.file.user_info.name,
+          email: result.data.file.user_info.email || ''
+        },
         cloudinaryData: {
           publicId: result.data.file.id,
           url: result.data.file.url,
@@ -129,13 +134,8 @@ export function DocumentUpload({ onDocumentUpload, userType }: DocumentUploadPro
           confirmations: 0,
           timestamp: result.data.blockchain.timestamp
         },
-        hasChanged: false,
-        uploadedAt: new Date().toISOString(),
-        verificationHistory: [],
-        shares: [],
-        lastVerified: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        arweaveData: {},
+        isOwner: true
       }
 
       setUploadComplete(true)
