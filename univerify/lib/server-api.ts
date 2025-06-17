@@ -1,8 +1,7 @@
 import { UploadResponse, TransactionResponse, DeleteResponse, HealthResponse, AuthResponse, UploadProgress, VerificationResponse, DocumentsResponse } from './types';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ''; 
 // API Error types
 export class APIError extends Error {
   constructor(

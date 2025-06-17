@@ -16,8 +16,7 @@ export const FileUpload: React.FC = () => {
   const [serverHealth, setServerHealth] = useState<boolean | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';;
-
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ''; 
   // Connect wallet
   const connectWallet = useCallback(async () => {
     try {

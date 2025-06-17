@@ -14,9 +14,7 @@ declare global {
 }
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';;
-
-// Utility functions
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ''; // Utility functions
 export const utils = {
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
