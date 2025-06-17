@@ -9,6 +9,18 @@ interface WalletConnectProps {
   onConnect: (address: string) => void
 }
 
+// Add TypeScript interface for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: any[] }) => Promise<any>
+      isMetaMask?: boolean
+      on?: (event: string, handler: (...args: any[]) => void) => void
+      removeListener?: (event: string, handler: (...args: any[]) => void) => void
+    }
+  }
+}
+
 export function WalletConnect({ onConnect }: WalletConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,16 +44,17 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       window.location.reload()
     }
 
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+    const ethereum = window.ethereum
+    if (ethereum?.on) {
+      ethereum.on('accountsChanged', handleAccountsChanged)
+      ethereum.on('chainChanged', handleChainChanged)
     }
 
     // Cleanup function
     return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener?.('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener?.('chainChanged', handleChainChanged)
+      if (ethereum?.removeListener) {
+        ethereum.removeListener('accountsChanged', handleAccountsChanged)
+        ethereum.removeListener('chainChanged', handleChainChanged)
       }
     }
   }, [onConnect])
@@ -117,16 +130,4 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       </p>
     </div>
   )
-}
-
-// Add TypeScript interface for window.ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: any[] }) => Promise<any>
-      isMetaMask?: boolean
-      on?: (event: string, handler: (...args: any[]) => void) => void
-      removeListener?: (event: string, handler: (...args: any[]) => void) => void
-    }
-  }
 }

@@ -5,7 +5,7 @@
 
 import { UploadResponse, TransactionResponse, DeleteResponse, HealthResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 /**
  * API Client Class
