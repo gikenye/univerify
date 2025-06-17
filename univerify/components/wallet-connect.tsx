@@ -13,37 +13,58 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false)
+  const [isPendingRequest, setIsPendingRequest] = useState(false)
 
   useEffect(() => {
     // Check if MetaMask is installed when component mounts
     setIsMetaMaskInstalled(typeof window !== "undefined" && !!window.ethereum?.isMetaMask)
-  }, [])
+
+    // Add event listeners for MetaMask state changes
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length > 0) {
+        onConnect(accounts[0])
+      }
+      setIsPendingRequest(false)
+      setIsConnecting(false)
+    }
+
+    const handleChainChanged = () => {
+      window.location.reload()
+    }
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged)
+      window.ethereum.on('chainChanged', handleChainChanged)
+    }
+
+    // Cleanup function
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener?.('accountsChanged', handleAccountsChanged)
+        window.ethereum.removeListener?.('chainChanged', handleChainChanged)
+      }
+    }
+  }, [onConnect])
 
   const connectWallet = async () => {
-    if (isConnecting) return // Prevent multiple simultaneous connection attempts
+    if (isConnecting || isPendingRequest) return
     
     setIsConnecting(true)
     setError(null)
+    setIsPendingRequest(true)
 
     try {
-      // Check if MetaMask is installed
       if (!isMetaMaskInstalled) {
         throw new Error("MetaMask is not installed. Please install MetaMask to continue.")
       }
 
-      // Check if window.ethereum is available
       if (!window.ethereum) {
         throw new Error("MetaMask provider not found. Please make sure MetaMask is properly installed.")
       }
 
-      // Request account access with a timeout
-      const accounts = await Promise.race([
-        window.ethereum.request({ method: "eth_requestAccounts" }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Connection request timed out")), 10000)
-        )
-      ])
-
+      // Check if there's already a pending request
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
+      
       if (accounts && accounts.length > 0) {
         onConnect(accounts[0])
       } else {
@@ -51,9 +72,17 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       }
     } catch (err: any) {
       console.error("Error connecting wallet:", err)
-      setError(err.message || "Failed to connect. Please try again.")
+      if (err.code === -32002) {
+        setError("A connection request is already pending. Please check your MetaMask extension.")
+      } else {
+        setError(err.message || "Failed to connect. Please try again.")
+      }
     } finally {
       setIsConnecting(false)
+      // Only reset pending request if it wasn't a pending request error
+      if (!error?.includes("already pending")) {
+        setIsPendingRequest(false)
+      }
     }
   }
 
@@ -68,12 +97,12 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
 
       <Button 
         onClick={connectWallet} 
-        disabled={isConnecting || !isMetaMaskInstalled} 
+        disabled={isConnecting || !isMetaMaskInstalled || isPendingRequest} 
         className="w-full" 
         size="lg"
       >
         <Wallet className="mr-2 h-5 w-5" />
-        {isConnecting ? "Connecting..." : isMetaMaskInstalled ? "Connect Account" : "MetaMask Not Found"}
+        {isConnecting ? "Connecting..." : isPendingRequest ? "Request Pending..." : isMetaMaskInstalled ? "Connect Account" : "MetaMask Not Found"}
       </Button>
 
       {!isMetaMaskInstalled && (
