@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, XCircle, FileText, Clock } from "lucide-react"
+import { CheckCircle, XCircle, FileText, Clock, Download } from "lucide-react"
 import { verificationService, type VerificationResult } from "@/lib/verification"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -108,19 +108,27 @@ export default function VerifyPage() {
                 </Alert>
 
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <FileText className="h-12 w-12 text-emerald-600" />
-                    <div>
-                      <h3 className="text-lg font-medium">{result.document?.filename}</h3>
-                      <p className="text-sm text-gray-500">
-                        Uploaded on{" "}
-                        {new Date(result.document?.uploadedAt || "").toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <FileText className="h-12 w-12 text-emerald-600" />
+                      <div>
+                        <h3 className="text-lg font-medium">{result.document?.filename}</h3>
+                        <p className="text-sm text-gray-500">
+                          Uploaded on{" "}
+                          {new Date(result.document?.uploadedAt || "").toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
                     </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => window.open(result.document?.cloudinaryData?.url, '_blank')}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   <div className="space-y-4">
