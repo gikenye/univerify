@@ -384,6 +384,32 @@ export class ServerAPIService {
       }),
     });
   }
+
+  // Get shared documents for current user
+  async getSharedDocuments(): Promise<DocumentsResponse> {
+    if (!this.authToken) {
+      throw new APIError('Authentication token is required to fetch shared documents', 401);
+    }
+
+    if (typeof window === 'undefined') {
+      throw new APIError('This method can only be called on the client side', 400);
+    }
+
+    const userData = localStorage.getItem('auth_user');
+    if (!userData) {
+      throw new APIError('User data not found', 401);
+    }
+
+    const { email } = JSON.parse(userData);
+    if (!email) {
+      throw new APIError('User email not found', 401);
+    }
+
+    return this.makeRequest<DocumentsResponse>(`/api/arweave/shared/${email}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+  }
 }
 
 // Create default API service instance

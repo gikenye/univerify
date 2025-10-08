@@ -11,15 +11,7 @@ import { toast } from "react-toastify"
 import { serverApiService } from "@/lib/server-api"
 import { useWallet } from "@/lib/wallet-context"
 
-interface AuthScreenProps {
-  onAuthenticate: (
-    authenticated: boolean,
-    type: "individual" | "organization" | null,
-    userData: { address: string; name?: string; email?: string } | null,
-  ) => void
-}
-
-export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
+export function AuthScreen() {
   const [step, setStep] = useState<"select" | "connect" | "signup" | "login">("select")
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
   const { isConnected, address } = useWallet()
@@ -58,14 +50,12 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
           localStorage.setItem('auth_token', loginResponse.data.token)
           localStorage.setItem('auth_user', JSON.stringify({
             ...loginResponse.data.user,
-            userType: userType
+            type: userType,
+            walletAddress: walletAddress
           }))
-          onAuthenticate(true, userType, {
-            address: walletAddress,
-            name: loginResponse.data.user.name,
-            email: loginResponse.data.user.email,
-          })
           toast.success("Successfully logged in!")
+          // Force page reload to trigger auth context update
+          window.location.reload()
           return
         }
       } else {
@@ -105,14 +95,12 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
           localStorage.setItem('auth_token', signupResponse.data.token)
           localStorage.setItem('auth_user', JSON.stringify({
             ...signupResponse.data.user,
-            userType: userType
+            type: userType,
+            walletAddress: address
           }))
-          onAuthenticate(true, userType, {
-            address: address,
-            name: signupResponse.data.user.name,
-            email: signupResponse.data.user.email,
-          })
           toast.success("Successfully signed up!")
+          // Force page reload to trigger auth context update
+          window.location.reload()
         }
       } else {
         toast.error("MetaMask is not available.")

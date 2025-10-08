@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DocumentUpload } from "@/components/document-upload"
 import { DocumentList } from "@/components/document-list"
 import { DocumentSharing } from "@/components/document-sharing"
+import { SharedDocuments } from "@/components/shared-documents"
 import { serverApiService, uploadUtils } from "@/lib/server-api"
 import { Document } from "@/lib/types"
 import { toast } from "sonner"
@@ -90,8 +91,9 @@ export function Dashboard({ userType, user }: DashboardProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 mb-8">
+        <TabsList className="grid grid-cols-4 mb-8">
           <TabsTrigger value="my-documents">My Documents</TabsTrigger>
+          <TabsTrigger value="shared-with-me">Shared with Me</TabsTrigger>
           <TabsTrigger value="upload">Upload Document</TabsTrigger>
           <TabsTrigger value="share">Share & Verify</TabsTrigger>
         </TabsList>
@@ -105,6 +107,10 @@ export function Dashboard({ userType, user }: DashboardProps) {
           ) : (
             <DocumentList documents={documents} onDocumentSelect={handleDocumentSelect} />
           )}
+        </TabsContent>
+
+        <TabsContent value="shared-with-me">
+          <SharedDocuments />
         </TabsContent>
 
         <TabsContent value="upload">

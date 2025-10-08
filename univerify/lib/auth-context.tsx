@@ -55,50 +55,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = localStorage.getItem(USER_KEY);
         
         if (storedToken && storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          // Verify the stored user matches the connected wallet
-          if (isConnected && address && parsedUser.walletAddress === address) {
-            serverApiService.setAuthToken(storedToken);
-            setUser(parsedUser);
-            setIsLoading(false);
-            return;
-          } else if (!isConnected) {
-            // Wallet disconnected, clear auth data
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            // Ensure the user object has the correct structure
+            const normalizedUser: User = {
+              id: parsedUser.id || '',
+              type: parsedUser.type || parsedUser.userType || 'individual',
+              name: parsedUser.name || '',
+              email: parsedUser.email || '',
+              walletAddress: parsedUser.walletAddress || parsedUser.wallet_address || '',
+              createdAt: parsedUser.createdAt || new Date().toISOString()
+            };
+            
+            // Verify the stored user matches the connected wallet (if wallet is connected)
+            if (!isConnected || (address && normalizedUser.walletAddress === address)) {
+              serverApiService.setAuthToken(storedToken);
+              setUser(normalizedUser);
+              setIsLoading(false);
+              return;
+            } else if (isConnected && address && normalizedUser.walletAddress !== address) {
+              // Wallet address mismatch, clear auth data
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(USER_KEY);
+              serverApiService.clearAuthToken();
+              setUser(null);
+            }
+          } catch (parseError) {
+            console.error('Error parsing stored user data:', parseError);
+            // Clear corrupted data
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             serverApiService.clearAuthToken();
             setUser(null);
-          }
-        }
-
-        // If wallet is connected but no valid session, try to login
-        if (isConnected && address) {
-          try {
-            const response = await serverApiService.login({ 
-              walletAddress: address, 
-              signature: '', 
-              message: '' 
-            });
-            
-            if (response.success && response.data.user) {
-              const transformedUser: User = {
-                id: response.data.user.id || '',
-                type: 'individual',
-                name: response.data.user.name || '',
-                email: response.data.user.email || '',
-                walletAddress: response.data.user.wallet_address,
-                createdAt: new Date().toISOString()
-              };
-              setUser(transformedUser);
-              localStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
-              
-              if (response.data.token) {
-                localStorage.setItem(TOKEN_KEY, response.data.token);
-                serverApiService.setAuthToken(response.data.token);
-              }
-            }
-          } catch (loginError) {
-            console.log('Auto-login failed, user may need to register:', loginError);
           }
         }
         
