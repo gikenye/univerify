@@ -5,45 +5,31 @@ import { Layout } from "@/components/layout"
 import { AuthScreen } from "@/components/auth-screen"
 import { Dashboard } from "@/components/dashboard"
 import { useAuth } from "@/lib/auth-context"
-import { useRouter } from "next/navigation"
+import { useWallet } from "@/lib/wallet-context"
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
   const [user, setUser] = useState<{ address: string; name?: string; email?: string } | null>(null)
-  const { user: authUser, logout } = useAuth()
-  const router = useRouter()
+  const { user: authUser, isLoading } = useAuth()
+  const { isConnected, address } = useWallet()
 
+  // Use auth context to determine authentication state
   useEffect(() => {
-    // Check for token in localStorage
-    const token = localStorage.getItem('auth_token')
-    const storedUser = localStorage.getItem('auth_user')
-    
-    if (token && storedUser) {
-      try {
-        const userData = JSON.parse(storedUser)
-        setIsAuthenticated(true)
-        setUserType(userData.userType || 'individual')
-        setUser({
-          address: userData.walletAddress,
-          name: userData.name,
-          email: userData.email
-        })
-      } catch (error) {
-        console.error('Error parsing stored user data:', error)
-        // Clear invalid data and logout
-        logout()
-        setIsAuthenticated(false)
-        setUserType(null)
-        setUser(null)
-      }
+    if (authUser) {
+      setIsAuthenticated(true)
+      setUserType(authUser.type)
+      setUser({
+        address: authUser.walletAddress,
+        name: authUser.name,
+        email: authUser.email
+      })
     } else {
-      // If no token or user data, ensure we're logged out
       setIsAuthenticated(false)
       setUserType(null)
       setUser(null)
     }
-  }, [logout])
+  }, [authUser])
 
   const handleAuthentication = (
     authenticated: boolean,
@@ -53,6 +39,20 @@ export default function Home() {
     setIsAuthenticated(authenticated)
     setUserType(type)
     setUser(userData)
+  }
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </Layout>
+    )
   }
 
   return (

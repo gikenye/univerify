@@ -1,22 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FileCheck, User, Building2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IndividualSignup } from "@/components/individual-signup"
 import { OrganizationSignup } from "@/components/organization-signup"
+import { WalletConnect } from "@/components/wallet-connect"
 import { toast } from "react-toastify"
 import { serverApiService } from "@/lib/server-api"
-
-// Extend Window interface to include ethereum
-interface Window {
-  ethereum?: {
-    request: (args: { method: string; params?: any[] }) => Promise<any>
-    on?: (event: string, callback: (...args: any[]) => void) => void
-    removeListener?: (event: string, callback: (...args: any[]) => void) => void
-  }
-}
+import { useWallet } from "@/lib/wallet-context"
 
 interface AuthScreenProps {
   onAuthenticate: (
@@ -26,71 +19,35 @@ interface AuthScreenProps {
   ) => void
 }
 
-interface WalletConnectProps {
-  onConnect: (address: string) => void
-}
-
-function WalletConnect({ onConnect }: WalletConnectProps) {
-  const connectWithMetaMask = async () => {
-    try {
-      // Check if window.ethereum is available
-      if (typeof window !== "undefined" && window.ethereum) {
-        // Request account access
-        await window.ethereum.request({ method: "eth_requestAccounts" })
-        // Get accounts
-        const accounts = await window.ethereum.request({ method: "eth_accounts" })
-        if (accounts.length > 0) {
-          onConnect(accounts[0])
-          toast.success("Connected with MetaMask")
-        } else {
-          toast.error("No accounts found. Please unlock MetaMask.")
-        }
-      } else {
-        toast.error("MetaMask is not installed. Please install it to continue.")
-      }
-    } catch (error) {
-      toast.error("Failed to connect with MetaMask. Please try again.")
-      console.error("MetaMask connection failed:", error)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <Button
-        onClick={connectWithMetaMask}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      >
-        Connect with MetaMask
-      </Button>
-    </div>
-  )
-}
-
-// Rest of the AuthScreen component remains unchanged
 export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
   const [step, setStep] = useState<"select" | "connect" | "signup" | "login">("select")
   const [userType, setUserType] = useState<"individual" | "organization" | null>(null)
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const { isConnected, address } = useWallet()
 
   const handleTypeSelect = (type: "individual" | "organization") => {
     setUserType(type)
     setStep("connect")
   }
 
-  const handleWalletConnect = async (address: string) => {
-    setWalletAddress(address)
-    
+  // Handle wallet connection changes
+  useEffect(() => {
+    if (isConnected && address && userType && step === "connect") {
+      handleWalletConnect(address)
+    }
+  }, [isConnected, address, userType, step])
+
+  const handleWalletConnect = async (walletAddress: string) => {
     try {
       // Try to login first
       if (typeof window !== "undefined" && window.ethereum) {
-        const message = `Sign this message to login to UniVerify with address ${address}`
+        const message = `Sign this message to login to UniVerify with address ${walletAddress}`
         const signature = await window.ethereum.request({
           method: "personal_sign",
-          params: [message, address],
+          params: [message, walletAddress],
         })
 
         const loginResponse = await serverApiService.login({
-          walletAddress: address,
+          walletAddress,
           signature,
           message,
         })
@@ -104,7 +61,7 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
             userType: userType
           }))
           onAuthenticate(true, userType, {
-            address: address,
+            address: walletAddress,
             name: loginResponse.data.user.name,
             email: loginResponse.data.user.email,
           })
@@ -124,18 +81,18 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
   }
 
   const handleSignupComplete = async (userData: { name: string; email: string }) => {
-    if (!walletAddress) return
+    if (!address) return
 
     try {
       if (typeof window !== "undefined" && window.ethereum) {
-        const message = `Sign this message to signup to UniVerify with address ${walletAddress}`
+        const message = `Sign this message to signup to UniVerify with address ${address}`
         const signature = await window.ethereum.request({
           method: "personal_sign",
-          params: [message, walletAddress],
+          params: [message, address],
         })
 
         const signupResponse = await serverApiService.signup({
-          walletAddress,
+          walletAddress: address,
           signature,
           message,
           name: userData.name,
@@ -151,7 +108,7 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
             userType: userType
           }))
           onAuthenticate(true, userType, {
-            address: walletAddress,
+            address: address,
             name: signupResponse.data.user.name,
             email: signupResponse.data.user.email,
           })
@@ -237,12 +194,12 @@ export function AuthScreen({ onAuthenticate }: AuthScreenProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <WalletConnect onConnect={handleWalletConnect} />
+            <WalletConnect />
           </CardContent>
         </Card>
       )}
 
-      {step === "signup" && userType && walletAddress && (
+      {step === "signup" && userType && address && (
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle>{userType === "individual" ? "Complete Your Profile" : "Register Your Organization"}</CardTitle>

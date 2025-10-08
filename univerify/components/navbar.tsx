@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FileCheck, LogOut } from "lucide-react"
+import { FileCheck, LogOut, Wallet } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { useWallet } from "@/lib/wallet-context"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -10,6 +11,7 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { user, logout } = useAuth()
+  const { isConnected, address, disconnect } = useWallet()
   const router = useRouter()
 
   // Handle mounting state
@@ -20,6 +22,7 @@ export function Navbar() {
   const handleLogout = async () => {
     try {
       logout() // Use the logout function from auth context
+      disconnect() // Also disconnect wallet
       router.push("/")
     } catch (error) {
       console.error("Logout error:", error)
@@ -51,6 +54,12 @@ export function Navbar() {
             <a href="/contact" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
               Contact
             </a>
+            {isConnected && (
+              <div className="flex items-center space-x-1 text-xs text-emerald-600 px-3 py-2">
+                <Wallet className="h-3 w-3" />
+                <span>Connected</span>
+              </div>
+            )}
             {user && (
               <Button
                 onClick={handleLogout}

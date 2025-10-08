@@ -5,6 +5,7 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import React from "react";
 import { AuthProvider } from "@/lib/auth-context";
+import { WalletProvider } from "@/lib/wallet-context";
 
 const queryClient = new QueryClient();
 
@@ -24,9 +25,11 @@ export default function Provider({
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <WalletProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </WalletProvider>
       </WagmiProvider>
     </QueryClientProvider>
   );
