@@ -123,6 +123,45 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Document Owner</h4>
+                      <p className="text-sm font-mono">{result.document?.owner?.walletAddress}</p>
+                      {result.document?.owner?.name && (
+                        <p className="text-sm text-gray-600">{result.document.owner.name}</p>
+                      )}
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Document Status</h4>
+                      <div className="flex items-center space-x-2">
+                        {result.document?.hasChanged ? (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <span className="text-sm text-red-600">Document has been modified</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                            <span className="text-sm text-emerald-600">Document is unchanged</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Version Information</h4>
+                      <p className="text-sm text-gray-600">
+                        Version: {result.document?.blockchainData?.blockNumber || 'N/A'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Last verified: {result.document?.lastVerified ? 
+                          new Date(result.document.lastVerified).toLocaleString() : 'Never'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium text-gray-500">Transaction Hash</h4>
